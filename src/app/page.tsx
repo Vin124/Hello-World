@@ -9,6 +9,12 @@ export default function Home() {
       <Link href="/books" className="text-zinc-500 hover:underline">
         View books →
       </Link>
+      <Link href="/members" className="text-zinc-500 hover:underline">
+        Members area →
+      </Link>
+      <Link href="/login" className="text-zinc-500 hover:underline">
+        Log in with Google
+      </Link>
     </main>
   );
 }
