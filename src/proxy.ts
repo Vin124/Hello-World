@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/members", "/profile", "/onboarding"];
+const PROTECTED = ["/members", "/profile", "/onboarding", "/create"];
 
 // Refreshes the Supabase session cookie on every request and does an
 // optimistic redirect for protected routes. Pages still verify the user.

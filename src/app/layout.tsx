@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hello World",
-  description: "Hello World",
+  title: "Caption the City",
+  description: "Post NYC photos, get AI captions, vote on the best ones.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
