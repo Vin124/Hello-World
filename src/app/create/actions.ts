@@ -82,6 +82,7 @@ export async function generateCaptions(
     return { error: "Couldn't save the captions. Try again." };
   }
 
+  revalidatePath("/feed");
   revalidatePath("/");
   return { imageId: image.id };
 }

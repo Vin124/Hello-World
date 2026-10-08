@@ -10,7 +10,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // vote. Runs with the user's own session, so RLS also limits it to their rows.
 export async function vote(captionId: string, value: 1 | -1) {
   const { supabase, user } = await getUser();
-  if (!user) redirect("/login?next=/");
+  if (!user) redirect("/login?next=/feed");
   if (!UUID.test(captionId) || (value !== 1 && value !== -1)) return;
 
   const { data: existing, error: readError } = await supabase
@@ -28,5 +28,6 @@ export async function vote(captionId: string, value: 1 | -1) {
       : await supabase.from("votes").update({ value }).eq("id", existing.id);
   if (error) throw new Error(error.message);
 
+  revalidatePath("/feed");
   revalidatePath("/");
 }

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 // Per-request client that reads/writes the auth session cookies.
 export async function createClient() {
@@ -29,10 +30,11 @@ export async function createClient() {
 }
 
 // Returns the signed-in user or null. getUser() validates the JWT with Supabase.
-export async function getUser() {
+// Cached per request so the layout header and the page share one lookup.
+export const getUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return { supabase, user };
-}
+});

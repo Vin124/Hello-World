@@ -1,175 +1,171 @@
 import Link from "next/link";
 import { getUser } from "@/lib/supabase/server";
-import { signOut } from "@/app/auth/actions";
-import { VoteButtons } from "./vote-buttons";
 
-type Caption = { id: string; body: string; score: number };
-type Image = {
+type Showcase = {
   id: string;
   storage_path: string;
-  created_at: string;
-  captions: Caption[];
+  captions: { body: string; score: number }[];
 };
 
-const best = (img: Image) => Math.max(0, ...img.captions.map((c) => c.score));
-const dayAgo = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+const HERO_CARDS = [
+  { tint: "tint-peach", pos: "left-0 top-0 w-40 sm:w-60", r: "-5deg" },
+  { tint: "tint-sage", pos: "right-0 top-16 w-40 sm:w-56", r: "4deg" },
+  { tint: "tint-sand", pos: "left-[12%] top-[13rem] w-40 sm:top-[17rem] sm:w-60", r: "-2deg" },
+];
 
-export default async function Home({ searchParams }: PageProps<"/">) {
-  const sort = (await searchParams).sort === "new" ? "new" : "top";
+const STEPS = [
+  {
+    emoji: "📸",
+    tint: "tint-rose",
+    title: "Snap the city",
+    body: "Bodega cat, dorm view, that one subway moment. Upload it in two taps.",
+  },
+  {
+    emoji: "✨",
+    tint: "tint-peach",
+    title: "AI writes three captions",
+    body: "One relatable, one unhinged, one that actually knows the block.",
+  },
+  {
+    emoji: "🗳️",
+    tint: "tint-sage",
+    title: "Everyone votes",
+    body: "Upvote the funniest. The top caption each day becomes Caption of the Day.",
+  },
+];
+
+export default async function LandingPage() {
   const { supabase, user } = await getUser();
-  const since = dayAgo();
 
-  const [{ data: images, error }, { data: top }, { data: votes }] = await Promise.all([
-    supabase
-      .from("images")
-      .select("id, storage_path, created_at, captions(id, body, score)")
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .returns<Image[]>(),
-    supabase
-      .from("captions")
-      .select("id, body, score, images(id, storage_path)")
-      .gte("created_at", since)
-      .gt("score", 0)
-      .order("score", { ascending: false })
-      .limit(1)
-      .returns<(Caption & { images: { id: string; storage_path: string } })[]>()
-      .maybeSingle(),
-    user
-      ? supabase.from("votes").select("caption_id, value")
-      : Promise.resolve({ data: [] as { caption_id: string; value: number }[] }),
-  ]);
-  if (error) throw new Error(`Failed to load the feed: ${error.message}`);
+  const [{ data: showcase }, { count: photoCount }, { count: captionCount }] =
+    await Promise.all([
+      supabase
+        .from("images")
+        .select("id, storage_path, captions(body, score)")
+        .order("created_at", { ascending: false })
+        .limit(3)
+        .returns<Showcase[]>(),
+      supabase.from("images").select("id", { count: "exact", head: true }),
+      supabase.from("captions").select("id", { count: "exact", head: true }),
+    ]);
 
-  const myVotes = new Map((votes ?? []).map((v) => [v.caption_id, v.value as 1 | -1]));
   const photoUrl = (path: string) =>
     supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
+  const topCaption = (s: Showcase) =>
+    [...s.captions].sort((a, b) => b.score - a.score)[0]?.body ?? "";
 
-  const feed = images.map((img) => ({
-    ...img,
-    captions: [...img.captions].sort((a, b) => b.score - a.score),
-  }));
-  if (sort === "top") feed.sort((a, b) => best(b) - best(a));
+  const primaryCta = user
+    ? { href: "/create", label: "Post a photo" }
+    : { href: "/login?next=/create", label: "Sign in with Google" };
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 font-sans">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
-          Caption the City
-        </h1>
-        <nav className="flex items-center gap-4 text-sm">
-          {user ? (
-            <>
-              <Link
-                href="/create"
-                className="rounded-full bg-black px-4 py-1.5 font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black"
-              >
-                Post a photo
-              </Link>
-              <Link href="/profile" className="text-zinc-500 hover:underline">
-                Profile
-              </Link>
-              <form action={signOut}>
-                <button type="submit" className="text-zinc-500 hover:underline">
-                  Sign out
-                </button>
-              </form>
-            </>
-          ) : (
-            <Link
-              href="/login?next=/"
-              className="rounded-full bg-black px-4 py-1.5 font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black"
-            >
-              Sign in
+    <main className="relative flex-1 overflow-hidden">
+      <div aria-hidden className="blob -left-24 top-10 h-80 w-80 bg-rose" />
+      <div aria-hidden className="blob -right-20 top-64 h-96 w-96 bg-peach [animation-delay:-6s]" />
+      <div aria-hidden className="blob left-1/3 top-[42rem] h-80 w-80 bg-sage [animation-delay:-12s]" />
+
+      {/* Hero */}
+      <section className="relative mx-auto grid max-w-5xl items-center gap-12 px-4 pb-20 pt-12 md:grid-cols-2 md:pt-20">
+        <div>
+          <p className="clay-sm tint-apricot rise inline-block px-4 py-1.5 text-xs font-black uppercase tracking-widest">
+            Made for Columbia · NYC
+          </p>
+          <h1 className="rise mt-6 text-5xl font-black leading-[1.02] tracking-tight [--i:1] sm:text-6xl">
+            New York,
+            <br />
+            <span className="bg-gradient-to-r from-accent via-up to-[#b8432c] bg-clip-text text-transparent">
+              captioned by AI.
+            </span>
+            <br />
+            Ranked by you.
+          </h1>
+          <p className="rise mt-6 max-w-md text-lg text-muted [--i:2]">
+            Post a photo from your week in the city. AI writes three captions,
+            and everyone votes on the best one. New winner every day.
+          </p>
+          <div className="rise mt-8 flex flex-wrap gap-4 [--i:3]">
+            <Link href={primaryCta.href} className="btn btn-primary">
+              {primaryCta.label}
             </Link>
-          )}
-        </nav>
-      </header>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-        New York through students&apos; camera rolls. AI writes the captions, you
-        pick the winners.
-      </p>
-
-      {top && (
-        <a
-          href={`#${top.images.id}`}
-          className="mt-6 flex items-center gap-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photoUrl(top.images.storage_path)}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-lg object-cover"
-          />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-              Caption of the day · {top.score} {top.score === 1 ? "vote" : "votes"}
-            </p>
-            <p className="mt-1 font-medium text-black dark:text-zinc-50">{top.body}</p>
+            <Link href="/feed" className="btn">
+              Browse the feed →
+            </Link>
           </div>
-        </a>
-      )}
+          <p className="rise mt-6 text-sm font-bold text-muted [--i:4]">
+            {photoCount ?? 0} photos · {captionCount ?? 0} AI captions and counting
+          </p>
+        </div>
 
-      <div className="mt-6 flex gap-4 border-b border-zinc-200 text-sm dark:border-zinc-800">
-        {(["top", "new"] as const).map((s) => (
-          <Link
-            key={s}
-            href={s === "top" ? "/" : "/?sort=new"}
-            className={`-mb-px border-b-2 pb-2 capitalize ${sort === s ? "border-black font-medium text-black dark:border-zinc-50 dark:text-zinc-50" : "border-transparent text-zinc-500"}`}
-          >
-            {s}
-          </Link>
-        ))}
-      </div>
+        <div className="relative h-[25rem] sm:h-[33rem]" aria-hidden>
+          {(showcase ?? []).slice(0, 3).map((s, i) => (
+            <Link
+              key={s.id}
+              href={`/feed?sort=new#${s.id}`}
+              tabIndex={-1}
+              className={`absolute ${HERO_CARDS[i].pos}`}
+            >
+              <div
+                className={`clay ${HERO_CARDS[i].tint} float p-2.5 transition-transform duration-500 ease-[var(--spring)] hover:scale-105`}
+                style={{ "--i": i, "--r": HERO_CARDS[i].r } as React.CSSProperties}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoUrl(s.storage_path)}
+                  alt=""
+                  className="aspect-[4/3] w-full rounded-[1.4rem] object-cover"
+                />
+                <p className="line-clamp-2 px-2 pb-1 pt-2 text-sm font-bold">
+                  {topCaption(s)}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-      {feed.length === 0 ? (
-        <p className="mt-12 text-center text-zinc-500">
-          No photos yet.{" "}
-          <Link href="/create" className="underline">
-            Post the first one.
-          </Link>
-        </p>
-      ) : (
-        <ul className="mt-6 space-y-10">
-          {feed.map((img) => (
-            <li key={img.id} id={img.id} className="scroll-mt-6">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoUrl(img.storage_path)}
-                alt=""
-                loading="lazy"
-                className="w-full rounded-xl bg-zinc-100 object-cover dark:bg-zinc-900"
-              />
-              <ul className="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
-                {img.captions.map((c) => (
-                  <li key={c.id} className="flex items-center gap-3 py-2">
-                    {user ? (
-                      <VoteButtons
-                        captionId={c.id}
-                        score={c.score}
-                        myVote={myVotes.get(c.id) ?? 0}
-                      />
-                    ) : (
-                      <span className="w-8 text-center text-sm font-medium tabular-nums text-black dark:text-zinc-50">
-                        {c.score}
-                      </span>
-                    )}
-                    <p className="text-black dark:text-zinc-50">{c.body}</p>
-                  </li>
-                ))}
-              </ul>
-              {!user && (
-                <Link
-                  href="/login?next=/"
-                  className="mt-1 inline-block text-sm text-zinc-500 hover:underline"
-                >
-                  Sign in to vote
-                </Link>
-              )}
+      {/* How it works */}
+      <section className="relative mx-auto max-w-5xl px-4 py-16">
+        <h2 className="reveal text-center text-3xl font-black tracking-tight sm:text-4xl">
+          How it works
+        </h2>
+        <ol className="mt-10 grid gap-6 md:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className={`clay ${step.tint} lift reveal p-7`}>
+              <span className="clay-sm grid h-14 w-14 place-items-center text-2xl" aria-hidden>
+                {step.emoji}
+              </span>
+              <p className="mt-5 text-xs font-black uppercase tracking-widest text-muted">
+                Step {i + 1}
+              </p>
+              <h3 className="mt-1 text-xl font-black">{step.title}</h3>
+              <p className="mt-2 text-muted">{step.body}</p>
             </li>
           ))}
-        </ul>
-      )}
+        </ol>
+      </section>
+
+      {/* Closing CTA */}
+      <section className="relative mx-auto max-w-5xl px-4 pb-24 pt-8">
+        <div className="clay tint-rose reveal px-6 py-14 text-center sm:px-12">
+          <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+            Your camera roll is funnier than you think.
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-muted">
+            Ten photos a day, three captions each. See if yours makes Caption of the Day.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <Link href={primaryCta.href} className="btn btn-primary">
+              {primaryCta.label}
+            </Link>
+            <Link href="/feed" className="btn">
+              Browse the feed
+            </Link>
+          </div>
+        </div>
+        <p className="mt-10 text-center text-xs text-muted">
+          Starter photos are public domain / CC0 via Wikimedia Commons. Captions by Claude.
+        </p>
+      </section>
     </main>
   );
 }

@@ -19,32 +19,35 @@ export default async function MembersPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-12 font-sans">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-10">
       <div className="flex items-center gap-4">
         {profile.avatar_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatar_url}
             alt=""
-            className="h-14 w-14 rounded-full object-cover"
+            className="clay-sm h-14 w-14 rounded-full object-cover p-1"
           />
         )}
-        <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+        <h1 className="text-3xl font-black tracking-tight">
           Welcome, {profile.first_name}
         </h1>
       </div>
-      <p className="mt-4 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-4 text-muted">
         This page is only visible to signed-in members.
       </p>
-      <div className="mt-8 flex gap-4 text-sm">
-        <Link href="/profile" className="text-zinc-500 hover:underline">
+      <div className="mt-8 flex flex-wrap gap-4">
+        <Link href="/feed" className="btn btn-primary btn-sm">
+          Go to the feed
+        </Link>
+        <Link href="/profile" className="btn btn-sm">
           Edit profile
         </Link>
-        <Link href="/books" className="text-zinc-500 hover:underline">
+        <Link href="/books" className="btn btn-sm">
           Books
         </Link>
         <form action={signOut}>
-          <button type="submit" className="text-zinc-500 hover:underline">
+          <button type="submit" className="btn btn-sm">
             Sign out
           </button>
         </form>

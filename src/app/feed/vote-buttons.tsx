@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
-import { vote } from "./votes/actions";
+import { vote } from "../votes/actions";
 
 // Shows the score and the caller's vote instantly, then lets the server
 // re-render with the real totals.
@@ -30,19 +30,23 @@ export function VoteButtons({
     });
   }
 
-  const base = "rounded px-1.5 text-lg leading-none hover:bg-zinc-100 dark:hover:bg-zinc-800";
+  const arrow =
+    "grid h-7 w-7 place-items-center rounded-full text-xs transition-all duration-300 ease-[var(--spring)] hover:scale-110 active:scale-90";
   return (
-    <div className="flex flex-col items-center text-sm">
+    <div className="clay-sm flex shrink-0 flex-col items-center gap-0.5 px-1 py-1.5">
       <button
         type="button"
         aria-label="Upvote"
         aria-pressed={state.myVote === 1}
         onClick={() => onVote(1)}
-        className={`${base} ${state.myVote === 1 ? "text-orange-600" : "text-zinc-400"}`}
+        className={`${arrow} ${state.myVote === 1 ? "bg-up text-white shadow-md" : "text-muted"}`}
       >
-        ▲
+        <span key={String(state.myVote === 1)} className={state.myVote === 1 ? "pop" : ""}>▲</span>
       </button>
-      <span className="font-medium tabular-nums text-black dark:text-zinc-50">
+      <span
+        key={state.score}
+        className="pop min-w-6 text-center text-sm font-black tabular-nums"
+      >
         {state.score}
       </span>
       <button
@@ -50,9 +54,9 @@ export function VoteButtons({
         aria-label="Downvote"
         aria-pressed={state.myVote === -1}
         onClick={() => onVote(-1)}
-        className={`${base} ${state.myVote === -1 ? "text-blue-600" : "text-zinc-400"}`}
+        className={`${arrow} ${state.myVote === -1 ? "bg-down text-white shadow-md" : "text-muted"}`}
       >
-        ▼
+        <span key={String(state.myVote === -1)} className={state.myVote === -1 ? "pop" : ""}>▼</span>
       </button>
     </div>
   );

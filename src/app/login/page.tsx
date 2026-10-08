@@ -12,18 +12,19 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   if (user) redirect(nextPath);
 
   return (
-    <main className="mx-auto w-full max-w-sm flex-1 px-4 py-12 font-sans">
-      <Link href="/" className="text-sm text-zinc-500 hover:underline">
+    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-10">
+      <div className="clay rise p-7 sm:p-9">
+      <Link href="/" className="text-sm font-bold text-muted hover:text-ink">
         ← Home
       </Link>
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+      <h1 className="mt-4 text-3xl font-black tracking-tight">
         Log in
       </h1>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-muted">
         New here? Signing in with Google creates your account.
       </p>
       {typeof error === "string" && (
-        <p role="alert" className="mt-4 rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="clay-sm tint-blush mt-5 px-4 py-3 text-sm font-bold">
           {error}
         </p>
       )}
@@ -31,11 +32,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <input type="hidden" name="next" value={nextPath} />
         <button
           type="submit"
-          className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 font-medium text-black hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+          className="btn btn-primary w-full"
         >
           Continue with Google
         </button>
       </form>
+      </div>
     </main>
   );
 }

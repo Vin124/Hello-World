@@ -4,6 +4,7 @@ import { getUser } from "@/lib/supabase/server";
 import { updateName } from "./actions";
 import { NameFields } from "./name-fields";
 import { AvatarUpload } from "./avatar-upload";
+import { signOut } from "@/app/auth/actions";
 
 export default async function ProfilePage({
   searchParams,
@@ -19,14 +20,15 @@ export default async function ProfilePage({
     .single();
 
   return (
-    <main className="mx-auto w-full max-w-sm flex-1 px-4 py-12 font-sans">
-      <Link href="/members" className="text-sm text-zinc-500 hover:underline">
-        ← Members
+    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-10">
+      <div className="clay rise p-7 sm:p-9">
+      <Link href="/feed" className="text-sm font-bold text-muted hover:text-ink">
+        ← Feed
       </Link>
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+      <h1 className="mt-4 text-3xl font-black tracking-tight">
         Profile
       </h1>
-      <p className="mt-1 text-sm text-zinc-500">{user.email}</p>
+      <p className="mt-1 text-sm text-muted">{user.email}</p>
 
       <section className="mt-8">
         <AvatarUpload
@@ -45,6 +47,12 @@ export default async function ProfilePage({
           submitLabel="Save"
         />
       </form>
+      <form action={signOut} className="mt-6 border-t border-muted/20 pt-6">
+        <button type="submit" className="btn w-full">
+          Sign out
+        </button>
+      </form>
+      </div>
     </main>
   );
 }

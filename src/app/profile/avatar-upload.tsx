@@ -70,16 +70,16 @@ export function AvatarUpload({
         <img
           src={avatarUrl}
           alt="Your profile photo"
-          className="h-20 w-20 rounded-full object-cover"
+          className="clay-sm h-20 w-20 rounded-full object-cover p-1"
         />
       ) : (
         <div
-          className="h-20 w-20 rounded-full bg-zinc-200 dark:bg-zinc-800"
+          className="clay-sm tint-rose h-20 w-20 rounded-full"
           aria-hidden
         />
       )}
       <div>
-        <label className="cursor-pointer rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-black hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800">
+        <label className="btn btn-sm cursor-pointer">
           {busy ? "Uploading…" : "Upload photo"}
           <input
             type="file"
@@ -90,7 +90,7 @@ export function AvatarUpload({
           />
         </label>
         {error && (
-          <p role="alert" className="mt-2 text-sm text-red-600">
+          <p role="alert" className="mt-2 text-sm font-bold text-up">
             {error}
           </p>
         )}

@@ -49,22 +49,28 @@ export function PhotoUpload({ userId }: { userId: string }) {
       setError(result.error);
       return;
     }
-    router.push(`/#${result.imageId}`);
+    router.push(`/feed?sort=new#${result.imageId}`);
   }
 
   return (
     <div>
       <label
-        className={`flex h-48 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-center text-zinc-500 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900 ${busy ? "pointer-events-none opacity-60" : ""}`}
+        className={`clay tint-rose group flex h-64 cursor-pointer flex-col items-center justify-center p-6 text-center transition-transform duration-500 ease-[var(--spring)] hover:-translate-y-1 active:scale-[0.98] ${busy ? "pointer-events-none" : ""}`}
       >
-        <span className="font-medium text-black dark:text-zinc-50">
+        <span
+          className={`clay-sm grid h-16 w-16 place-items-center text-3xl transition-transform duration-500 ease-[var(--spring)] group-hover:scale-110 group-hover:-rotate-6 ${busy ? "animate-bounce" : ""}`}
+          aria-hidden
+        >
+          {status === "captioning" ? "✨" : "📸"}
+        </span>
+        <span className="mt-4 text-lg font-black" aria-live="polite">
           {status === "uploading"
             ? "Uploading…"
             : status === "captioning"
-              ? "Writing captions…"
+              ? "Writing your captions…"
               : "Choose a photo"}
         </span>
-        <span className="mt-1 text-sm">PNG, JPEG, GIF, or WebP · up to 4 MB</span>
+        <span className="mt-1 text-sm text-muted">PNG, JPEG, GIF, or WebP · up to 4 MB</span>
         <input
           type="file"
           accept={TYPES.join(",")}
@@ -74,7 +80,7 @@ export function PhotoUpload({ userId }: { userId: string }) {
         />
       </label>
       {error && (
-        <p role="alert" className="mt-3 text-sm text-red-600">
+        <p role="alert" className="clay-sm tint-blush rise mt-5 px-4 py-3 text-sm font-bold">
           {error}
         </p>
       )}

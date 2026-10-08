@@ -26,11 +26,12 @@ export default async function OnboardingPage({
   ).split(" ");
 
   return (
-    <main className="mx-auto w-full max-w-sm flex-1 px-4 py-12 font-sans">
-      <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+    <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-10">
+      <div className="clay rise p-7 sm:p-9">
+      <h1 className="text-3xl font-black tracking-tight">
         Welcome!
       </h1>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-muted">
         Before you continue, tell us your name.
       </p>
       <form action={updateName} className="mt-6 flex flex-col gap-4">
@@ -47,6 +48,7 @@ export default async function OnboardingPage({
           submitLabel="Continue"
         />
       </form>
+      </div>
     </main>
   );
 }
