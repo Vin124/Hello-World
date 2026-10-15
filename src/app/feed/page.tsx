@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getUser } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { VoteButtons } from "./vote-buttons";
 
 type Caption = { id: string; body: string; score: number };
 type Image = {
   id: string;
+  user_id: string;
   storage_path: string;
   created_at: string;
   captions: Caption[];
@@ -14,15 +16,52 @@ const TINTS = ["tint-rose", "tint-peach", "tint-sage", "tint-sand", "tint-blush"
 const best = (img: Image) => Math.max(0, ...img.captions.map((c) => c.score));
 const dayAgo = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
+type Sort = "top" | "new" | "unvoted";
+const SORT_HREF: Record<Sort, string> = {
+  top: "/feed",
+  new: "/feed?sort=new",
+  unvoted: "/feed?sort=unvoted",
+};
+
+// Profiles are private under RLS (own row only), so the uploader's name and
+// avatar are read with the service role and only those fields leave
+// the server. A failure here just hides the byline instead of breaking the feed.
+async function uploaders(ids: string[]) {
+  const byId = new Map<string, { name: string; avatar: string | null }>();
+  if (ids.length === 0) return byId;
+  try {
+    const { data } = await createAdminClient()
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url")
+      .in("id", ids);
+    for (const p of data ?? []) {
+      const name = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+      byId.set(p.id, { name: name || "A classmate", avatar: p.avatar_url });
+    }
+  } catch (e) {
+    console.error("Failed to load uploaders", e);
+  }
+  return byId;
+}
+
+function timeAgo(iso: string) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
+  return `${Math.round(mins / (60 * 24))}d ago`;
+}
+
 export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
-  const sort = (await searchParams).sort === "new" ? "new" : "top";
   const { supabase, user } = await getUser();
+  const requested = (await searchParams).sort;
+  const sort: Sort =
+    requested === "new" ? "new" : requested === "unvoted" && user ? "unvoted" : "top";
   const since = dayAgo();
 
   const [{ data: images, error }, { data: top }, { data: votes }] = await Promise.all([
     supabase
       .from("images")
-      .select("id, storage_path, created_at, captions(id, body, score)")
+      .select("id, user_id, storage_path, created_at, captions(id, body, score)")
       .order("created_at", { ascending: false })
       .limit(50)
       .returns<Image[]>(),
@@ -45,11 +84,18 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
   const photoUrl = (path: string) =>
     supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
 
-  const feed = images.map((img) => ({
+  const byUploader = await uploaders([...new Set(images.map((img) => img.user_id))]);
+
+  const all = images.map((img) => ({
     ...img,
     captions: [...img.captions].sort((a, b) => b.score - a.score),
   }));
+  // "To vote" = photos where the viewer hasn't voted on any caption yet.
+  const isUnvoted = (img: Image) => !img.captions.some((c) => myVotes.has(c.id));
+  const unvotedCount = all.filter(isUnvoted).length;
+  const feed = sort === "unvoted" ? all.filter(isUnvoted) : all;
   if (sort === "top") feed.sort((a, b) => best(b) - best(a));
+  const tabs: Sort[] = user ? ["unvoted", "top", "new"] : ["top", "new"];
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-8">
@@ -59,15 +105,15 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
           <p className="mt-1 text-muted">AI writes the captions. You pick the winners.</p>
         </div>
         <div className="clay-inset flex p-1 text-sm font-bold" role="tablist" aria-label="Sort">
-          {(["top", "new"] as const).map((s) => (
+          {tabs.map((s) => (
             <Link
               key={s}
-              href={s === "top" ? "/feed" : "/feed?sort=new"}
+              href={SORT_HREF[s]}
               role="tab"
               aria-selected={sort === s}
               className={`rounded-xl px-4 py-1.5 capitalize transition-all duration-300 ${sort === s ? "clay-sm text-ink" : "text-muted hover:text-ink"}`}
             >
-              {s}
+              {s === "unvoted" ? `To vote${unvotedCount ? ` · ${unvotedCount}` : ""}` : s}
             </Link>
           ))}
         </div>
@@ -93,7 +139,23 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
         </a>
       )}
 
-      {feed.length === 0 ? (
+      {feed.length === 0 && sort === "unvoted" ? (
+        <div className="clay tint-sage rise mt-10 p-10 text-center [--i:2]">
+          <p className="text-4xl" aria-hidden>🎉</p>
+          <p className="mt-3 text-xl font-black">You&apos;re all caught up</p>
+          <p className="mt-1 text-muted">
+            You&apos;ve voted on every photo. New ones land here as classmates post.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link href="/create" className="btn btn-primary">
+              Post a photo
+            </Link>
+            <Link href="/feed" className="btn">
+              See what&apos;s winning
+            </Link>
+          </div>
+        </div>
+      ) : feed.length === 0 ? (
         <div className="clay rise mt-10 p-10 text-center [--i:2]">
           <p className="text-muted">No photos yet.</p>
           <Link href="/create" className="btn btn-primary mt-4">
@@ -102,12 +164,28 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
         </div>
       ) : (
         <ul className="mt-10 space-y-10">
-          {feed.map((img, i) => (
+          {feed.map((img, i) => {
+            const uploader = byUploader.get(img.user_id);
+            return (
             <li
               key={img.id}
               id={img.id}
               className={`clay reveal scroll-mt-28 p-3 ${TINTS[i % TINTS.length]}`}
             >
+              <div className="flex items-center gap-2 px-2 pb-3 pt-1 text-sm">
+                {uploader?.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={uploader.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
+                ) : (
+                  <span className="clay-sm grid h-7 w-7 place-items-center text-xs" aria-hidden>
+                    📷
+                  </span>
+                )}
+                <span className="font-bold">
+                  {user?.id === img.user_id ? "You" : (uploader?.name ?? "A classmate")}
+                </span>
+                <span className="text-muted">· {timeAgo(img.created_at)}</span>
+              </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoUrl(img.storage_path)}
@@ -142,7 +220,8 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
                 </Link>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </main>
