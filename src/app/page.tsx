@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
 
 type Showcase = {
@@ -36,6 +37,8 @@ const STEPS = [
 
 export default async function LandingPage() {
   const { supabase, user } = await getUser();
+  // Signed-in users came to vote; the landing page is for newcomers.
+  if (user) redirect("/feed");
 
   const [{ data: showcase }, { count: photoCount }, { count: captionCount }] =
     await Promise.all([

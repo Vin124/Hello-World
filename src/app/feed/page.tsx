@@ -18,7 +18,7 @@ const dayAgo = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 type Sort = "top" | "new" | "unvoted";
 const SORT_HREF: Record<Sort, string> = {
-  top: "/feed",
+  top: "/feed?sort=top",
   new: "/feed?sort=new",
   unvoted: "/feed?sort=unvoted",
 };
@@ -54,8 +54,13 @@ function timeAgo(iso: string) {
 export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
   const { supabase, user } = await getUser();
   const requested = (await searchParams).sort;
+  // Signed-in users land on the voting queue; everyone else on the top photos.
   const sort: Sort =
-    requested === "new" ? "new" : requested === "unvoted" && user ? "unvoted" : "top";
+    requested === "new" || requested === "top"
+      ? requested
+      : user && (requested === "unvoted" || requested === undefined)
+        ? "unvoted"
+        : "top";
   const since = dayAgo();
 
   const [{ data: images, error }, { data: top }, { data: votes }] = await Promise.all([
@@ -90,19 +95,26 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
     ...img,
     captions: [...img.captions].sort((a, b) => b.score - a.score),
   }));
-  // "To vote" = photos where the viewer hasn't voted on any caption yet.
-  const isUnvoted = (img: Image) => !img.captions.some((c) => myVotes.has(c.id));
+  // "To vote" = other people's photos where the viewer hasn't voted on any caption yet.
+  const isUnvoted = (img: Image) =>
+    img.user_id !== user?.id && !img.captions.some((c) => myVotes.has(c.id));
   const unvotedCount = all.filter(isUnvoted).length;
   const feed = sort === "unvoted" ? all.filter(isUnvoted) : all;
   if (sort === "top") feed.sort((a, b) => best(b) - best(a));
   const tabs: Sort[] = user ? ["unvoted", "top", "new"] : ["top", "new"];
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-8">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8">
       <div className="rise flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight">The Feed</h1>
-          <p className="mt-1 text-muted">AI writes the captions. You pick the winners.</p>
+          <h1 className="text-4xl font-black tracking-tight">
+            {sort === "unvoted" ? "Pick the funniest" : "The Feed"}
+          </h1>
+          <p className="mt-1 text-muted">
+            {sort === "unvoted"
+              ? "AI wrote three captions for each classmate's photo. Upvote the one that got you."
+              : "AI writes the captions. You pick the winners."}
+          </p>
         </div>
         <div className="clay-inset flex p-1 text-sm font-bold" role="tablist" aria-label="Sort">
           {tabs.map((s) => (
@@ -121,7 +133,7 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
 
       {top && (
         <a
-          href={`#${top.images.id}`}
+          href={`/feed?sort=top#${top.images.id}`}
           className="clay tint-apricot lift rise mt-8 flex items-center gap-4 p-4 [--i:1]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -144,13 +156,13 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
           <p className="text-4xl" aria-hidden>🎉</p>
           <p className="mt-3 text-xl font-black">You&apos;re all caught up</p>
           <p className="mt-1 text-muted">
-            You&apos;ve voted on every photo. New ones land here as classmates post.
+            You&apos;ve voted on every classmate&apos;s photo. New ones land here as people post.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href="/create" className="btn btn-primary">
               Post a photo
             </Link>
-            <Link href="/feed" className="btn">
+            <Link href="/feed?sort=top" className="btn">
               See what&apos;s winning
             </Link>
           </div>
@@ -170,14 +182,24 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
             <li
               key={img.id}
               id={img.id}
-              className={`clay reveal scroll-mt-28 p-3 ${TINTS[i % TINTS.length]}`}
+              className={`clay reveal grid scroll-mt-28 gap-4 p-3 sm:p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:items-center md:gap-6 ${TINTS[i % TINTS.length]}`}
             >
-              <div className="flex items-center gap-2 px-2 pb-3 pt-1 text-sm">
+              {/* Photo and captions sit side by side from md up; on phones the
+                  photo is height-capped so the captions stay on screen with it. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoUrl(img.storage_path)}
+                alt=""
+                loading="lazy"
+                className="max-h-[36vh] w-full rounded-[1.5rem] bg-surface object-cover md:aspect-[4/5] md:max-h-[34rem]"
+              />
+              <div className="flex min-w-0 flex-col gap-3 md:py-2 md:pr-2">
+              <div className="flex items-center gap-2 px-1 text-sm">
                 {uploader?.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={uploader.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
+                  <img src={uploader.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
                 ) : (
-                  <span className="clay-sm grid h-7 w-7 place-items-center text-xs" aria-hidden>
+                  <span className="clay-sm grid h-8 w-8 place-items-center text-xs" aria-hidden>
                     📷
                   </span>
                 )}
@@ -186,16 +208,9 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
                 </span>
                 <span className="text-muted">· {timeAgo(img.created_at)}</span>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoUrl(img.storage_path)}
-                alt=""
-                loading="lazy"
-                className="w-full rounded-[1.5rem] bg-surface object-cover"
-              />
-              <ul className="mt-3 space-y-2">
+              <ul className="space-y-2.5">
                 {img.captions.map((c, rank) => (
-                  <li key={c.id} className="flex items-center gap-3 rounded-2xl bg-surface/70 p-2 pr-4">
+                  <li key={c.id} className="flex items-center gap-3 rounded-2xl bg-surface/80 p-2 pr-4 text-[0.95rem] leading-snug md:text-[1.05rem]">
                     {user ? (
                       <VoteButtons
                         captionId={c.id}
@@ -214,11 +229,12 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
               {!user && (
                 <Link
                   href="/login?next=/feed"
-                  className="mt-2 inline-block px-2 py-1 text-sm font-bold text-muted hover:text-ink"
+                  className="inline-block px-1 text-sm font-bold text-muted hover:text-ink"
                 >
                   Sign in to vote →
                 </Link>
               )}
+              </div>
             </li>
             );
           })}
